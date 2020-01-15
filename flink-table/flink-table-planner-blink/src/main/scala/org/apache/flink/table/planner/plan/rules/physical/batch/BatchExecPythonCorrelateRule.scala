@@ -20,7 +20,7 @@ package org.apache.flink.table.planner.plan.rules.physical.batch
 
 import org.apache.flink.table.planner.plan.nodes.FlinkConventions
 import org.apache.flink.table.planner.plan.nodes.logical.{FlinkLogicalCalc, FlinkLogicalCorrelate, FlinkLogicalTableFunctionScan}
-import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecCorrelate
+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecPythonCorrelate
 import org.apache.flink.table.planner.plan.utils.PythonUtil
 import org.apache.calcite.plan.volcano.RelSubset
 import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall, RelTraitSet}
@@ -28,24 +28,24 @@ import org.apache.calcite.rel.RelNode
 import org.apache.calcite.rel.convert.ConverterRule
 import org.apache.calcite.rex.RexNode
 
-class BatchExecCorrelateRule extends ConverterRule(
+class BatchExecPythonCorrelateRule extends ConverterRule(
   classOf[FlinkLogicalCorrelate],
   FlinkConventions.LOGICAL,
   FlinkConventions.BATCH_PHYSICAL,
-  "BatchExecCorrelateRule") {
+  "BatchExecPythonCorrelateRule") {
 
   override def matches(call: RelOptRuleCall): Boolean = {
     val join = call.rel(0).asInstanceOf[FlinkLogicalCorrelate]
     val right = join.getRight.asInstanceOf[RelSubset].getOriginal
 
     right match {
-      // right node is a java table function
-      case scan: FlinkLogicalTableFunctionScan => PythonUtil.isNonPythonCall(scan.getCall)
+      // right node is a python table function
+      case scan: FlinkLogicalTableFunctionScan => PythonUtil.isPythonCall(scan.getCall)
       // a filter is pushed above the table function
       case calc: FlinkLogicalCalc =>
         val scan = calc.getInput.asInstanceOf[RelSubset]
           .getOriginal.asInstanceOf[FlinkLogicalTableFunctionScan]
-        PythonUtil.isNonPythonCall(scan.getCall)
+        PythonUtil.isPythonCall(scan.getCall)
       case _ => false
     }
   }
@@ -56,7 +56,9 @@ class BatchExecCorrelateRule extends ConverterRule(
     val convInput: RelNode = RelOptRule.convert(join.getInput(0), FlinkConventions.BATCH_PHYSICAL)
     val right: RelNode = join.getInput(1)
 
-    def convertToCorrelate(relNode: RelNode, condition: Option[RexNode]): BatchExecCorrelate = {
+    def convertToCorrelate(
+        relNode: RelNode,
+        condition: Option[RexNode]): BatchExecPythonCorrelate = {
       relNode match {
         case rel: RelSubset =>
           convertToCorrelate(rel.getRelList.get(0), condition)
@@ -67,7 +69,7 @@ class BatchExecCorrelateRule extends ConverterRule(
             Some(calc.getProgram.expandLocalRef(calc.getProgram.getCondition)))
 
         case scan: FlinkLogicalTableFunctionScan =>
-          new BatchExecCorrelate(
+          new BatchExecPythonCorrelate(
             rel.getCluster,
             traitSet,
             convInput,
@@ -82,6 +84,6 @@ class BatchExecCorrelateRule extends ConverterRule(
   }
 }
 
-object BatchExecCorrelateRule {
-  val INSTANCE: RelOptRule = new BatchExecCorrelateRule
+object BatchExecPythonCorrelateRule {
+  val INSTANCE: RelOptRule = new BatchExecPythonCorrelateRule
 }
