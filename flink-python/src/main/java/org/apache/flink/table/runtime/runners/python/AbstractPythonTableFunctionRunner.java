@@ -18,17 +18,15 @@
 
 package org.apache.flink.table.runtime.runners.python;
 
-import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.fnexecution.v1.FlinkFnApi;
 import org.apache.flink.python.AbstractPythonFunctionRunner;
 import org.apache.flink.python.PythonFunctionRunner;
 import org.apache.flink.python.env.PythonEnvironmentManager;
-import org.apache.flink.table.functions.ScalarFunction;
+import org.apache.flink.table.functions.TableFunction;
 import org.apache.flink.table.functions.python.PythonFunctionInfo;
 import org.apache.flink.table.runtime.typeutils.PythonTypeUtils;
 import org.apache.flink.table.types.logical.RowType;
-import org.apache.flink.util.Preconditions;
 
 import com.google.protobuf.ByteString;
 import org.apache.beam.model.pipeline.v1.RunnerApi;
@@ -46,16 +44,15 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Abstract {@link PythonFunctionRunner} used to execute Python {@link ScalarFunction}s.
+ * Abstract {@link PythonFunctionRunner} used to execute Python {@link TableFunction}.
  *
- * @param <IN> Type of the input elements.
+ * @param <IN>  Type of the input elements.
  * @param <OUT> Type of the execution results.
  */
-@Internal
-public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends AbstractPythonFunctionRunner<IN, OUT> {
+public abstract class AbstractPythonTableFunctionRunner<IN, OUT> extends AbstractPythonFunctionRunner<IN, OUT> {
 
 	private static final String SCHEMA_CODER_URN = "flink:coder:schema:v1";
-	private static final String SCALAR_FUNCTION_URN = "flink:transform:scalar_function:v1";
+	private static final String TABLE_FUNCTION_URN = "flink:transform:table_function:v1";
 
 	private static final String INPUT_ID = "input";
 	private static final String OUTPUT_ID = "output";
@@ -70,21 +67,21 @@ public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends Abstra
 
 	private static final String WINDOW_STRATEGY = "windowing_strategy";
 
-	private final PythonFunctionInfo[] scalarFunctions;
+	private final PythonFunctionInfo tableFunction;
 	private final RowType inputType;
 	private final RowType outputType;
 
-	public AbstractPythonScalarFunctionRunner(
+	public AbstractPythonTableFunctionRunner(
 		String taskName,
 		FnDataReceiver<OUT> resultReceiver,
-		PythonFunctionInfo[] scalarFunctions,
+		PythonFunctionInfo tableFunction,
 		PythonEnvironmentManager environmentManager,
 		RowType inputType,
 		RowType outputType) {
 		super(taskName, resultReceiver, environmentManager, StateRequestHandler.unsupported());
-		this.scalarFunctions = Preconditions.checkNotNull(scalarFunctions);
-		this.inputType = Preconditions.checkNotNull(inputType);
-		this.outputType = Preconditions.checkNotNull(outputType);
+		this.tableFunction = tableFunction;
+		this.inputType = inputType;
+		this.outputType = outputType;
 	}
 
 	/**
@@ -102,7 +99,6 @@ public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends Abstra
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public ExecutableStage createExecutableStage() throws Exception {
 		RunnerApi.Components components =
 			RunnerApi.Components.newBuilder()
@@ -123,11 +119,11 @@ public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends Abstra
 					RunnerApi.PTransform.newBuilder()
 						.setUniqueName(TRANSFORM_ID)
 						.setSpec(RunnerApi.FunctionSpec.newBuilder()
-									.setUrn(SCALAR_FUNCTION_URN)
-									.setPayload(
-										org.apache.beam.vendor.grpc.v1p21p0.com.google.protobuf.ByteString.copyFrom(
-											getUserDefinedFunctionsProto().toByteArray()))
-									.build())
+							.setUrn(TABLE_FUNCTION_URN)
+							.setPayload(
+								org.apache.beam.vendor.grpc.v1p21p0.com.google.protobuf.ByteString.copyFrom(
+									getUserDefinedFunctionsProto().toByteArray()))
+							.build())
 						.putInputs(MAIN_INPUT_NAME, INPUT_ID)
 						.putOutputs(MAIN_OUTPUT_NAME, OUTPUT_ID)
 						.build())
@@ -168,9 +164,7 @@ public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends Abstra
 	@VisibleForTesting
 	public FlinkFnApi.UserDefinedFunctions getUserDefinedFunctionsProto() {
 		FlinkFnApi.UserDefinedFunctions.Builder builder = FlinkFnApi.UserDefinedFunctions.newBuilder();
-		for (PythonFunctionInfo pythonFunctionInfo : scalarFunctions) {
-			builder.addUdfs(getUserDefinedFunctionProto(pythonFunctionInfo));
-		}
+		builder.addUdfs(getUserDefinedFunctionProto(tableFunction));
 		return builder.build();
 	}
 
@@ -212,7 +206,7 @@ public abstract class AbstractPythonScalarFunctionRunner<IN, OUT> extends Abstra
 				RunnerApi.FunctionSpec.newBuilder()
 					.setUrn(SCHEMA_CODER_URN)
 					.setPayload(org.apache.beam.vendor.grpc.v1p21p0.com.google.protobuf.ByteString.copyFrom(
-						PythonTypeUtils.toProtoType(rowType).toByteArray()))
+						PythonTypeUtils.toTableProtoType(rowType).toByteArray()))
 					.build())
 			.build();
 	}

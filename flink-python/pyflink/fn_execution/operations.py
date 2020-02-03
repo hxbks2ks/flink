@@ -22,11 +22,14 @@ from abc import abstractmethod, ABCMeta
 from apache_beam.runners.worker import operation_specs
 from apache_beam.runners.worker import bundle_processor
 from apache_beam.runners.worker.operations import Operation
+from apache_beam.runners.common import _OutputProcessor
+from pyflink.table import Row
 
 from pyflink.fn_execution import flink_fn_execution_pb2
 from pyflink.serializers import PickleSerializer
 
 SCALAR_FUNCTION_URN = "flink:transform:scalar_function:v1"
+TABLE_FUNCTION_URN = "flink:transform:table_function:v1"
 
 
 class InputGetter(object):
@@ -171,6 +174,58 @@ class ScalarFunctionInvoker(object):
         return self.scalar_function.eval(*args)
 
 
+class TableFunctionInvoker(object):
+    """
+    An abstraction that can be used to execute :class:`TableFunction` methods.
+
+    A TableFunctionInvoker describes a particular way for invoking methods of a
+    :class:`TableFunction`.
+
+    :param table_function: the :class:`TableFunction` to execute
+    :param inputs: the input arguments for the :class:`TableFunction`
+    """
+
+    def __init__(self, table_function, inputs):
+        self.table_function = table_function
+        self.input_getters = []
+        for input in inputs:
+            if input.HasField("udf"):
+                # for chaining Python UDF input: the input argument is a Python ScalarFunction
+                self.input_getters.append(ScalarFunctionInputGetter(input.udf))
+            elif input.HasField("inputOffset"):
+                # the input argument is a column of the input row
+                self.input_getters.append(OffsetInputGetter(input.inputOffset))
+            else:
+                # the input argument is a constant value
+                self.input_getters.append(ConstantInputGetter(input.inputConstant))
+
+    def invoke_open(self):
+        """
+        Invokes the TableFunction.open() function.
+        """
+        for input_getter in self.input_getters:
+            input_getter.open()
+        # set the FunctionContext to None for now
+        self.table_function.open(None)
+
+    def invoke_close(self):
+        """
+        Invokes the TableFunction.close() function.
+        """
+        for input_getter in self.input_getters:
+            input_getter.close()
+        self.table_function.close()
+
+    def invoke_eval(self, value):
+        """
+        Invokes the TableFunction.eval() function.
+
+        :param value: the input element for which eval() method should be invoked
+        """
+        args = [input_getter.get(value) for input_getter in self.input_getters]
+        return self.table_function.eval(*args)
+
+
 def create_scalar_function_invoker(scalar_function_proto):
     """
     Creates :class:`ScalarFunctionInvoker` from the proto representation of a
@@ -182,6 +237,19 @@ def create_scalar_function_invoker(scalar_function_proto):
     import cloudpickle
     scalar_function = cloudpickle.loads(scalar_function_proto.payload)
     return ScalarFunctionInvoker(scalar_function, scalar_function_proto.inputs)
+
+
+def create_table_function_invoker(table_function_proto):
+    """
+    Creates :class:`TableFunctionInvoker` from the proto representation of a
+    :class:`TableFunction`.
+
+    :param table_function_proto: the proto representation of the Python :class:`TableFunction`
+    :return: :class:`TableFunctionInvoker`.
+    """
+    import cloudpickle
+    table_function = cloudpickle.loads(table_function_proto.payload)
+    return TableFunctionInvoker(table_function, table_function_proto.inputs)
 
 
 class ScalarFunctionRunner(object):
@@ -221,10 +289,45 @@ class ScalarFunctionRunner(object):
     def process(self, windowed_value):
         results = [invoker.invoke_eval(windowed_value.value) for invoker in
                    self.scalar_function_invokers]
-        from pyflink.table import Row
         result = Row(*results)
         # send the execution results back
         self.output_processor.process_outputs(windowed_value, [result])
+
+
+class TableFunctionRunner(object):
+    def __init__(self, udfs_proto):
+        self.table_function_invokers = [create_table_function_invoker(f) for f in
+                                        udfs_proto]
+
+    def setup(self, main_receivers):
+        """
+        Set up the TableFunctionRunner.
+
+        :param main_receivers: Receiver objects which is responsible for sending the execution
+                               results back the the remote Java operator
+        """
+        self.output_processor = _OutputProcessor(
+            window_fn=None,
+            main_receivers=main_receivers,
+            tagged_receivers=None,
+            per_element_output_counter=None)
+
+    def open(self):
+        for invoker in self.table_function_invokers:
+            invoker.invoke_open()
+
+    def close(self):
+        for invoker in self.table_function_invokers:
+            invoker.invoke_close()
+
+    def create_result(self, value):
+        for ele in self.table_function_invokers[0].invoke_eval(value):
+            yield Row(*ele)
+        yield Row(__flink_table_last_row=True)
+
+    def process(self, windowed_value):
+        results = self.create_result(windowed_value.value)
+        self.output_processor.process_outputs(windowed_value, results)
 
 
 class ScalarFunctionOperation(Operation):
@@ -278,6 +381,57 @@ class ScalarFunctionOperation(Operation):
         return metrics
 
 
+class TableFunctionOperation(Operation):
+    """
+    An operation that will execute TableFunction for each input element.
+    """
+
+    def __init__(self, name, spec, counter_factory, sampler, consumers):
+        super(TableFunctionOperation, self).__init__(name, spec, counter_factory, sampler)
+        for tag, op_consumers in consumers.items():
+            for consumer in op_consumers:
+                self.add_receiver(consumer, 0)
+
+        self.table_function_runner = TableFunctionRunner(self.spec.serialized_fn)
+        self.table_function_runner.open()
+
+    def setup(self):
+        with self.scoped_start_state:
+            super(TableFunctionOperation, self).setup()
+            self.table_function_runner.setup(self.receivers[0])
+
+    def start(self):
+        with self.scoped_start_state:
+            super(TableFunctionOperation, self).start()
+
+    def process(self, o):
+        with self.scoped_process_state:
+            self.table_function_runner.process(o)
+
+    def finish(self):
+        with self.scoped_finish_state:
+            super(TableFunctionOperation, self).finish()
+
+    def needs_finalization(self):
+        return False
+
+    def reset(self):
+        super(TableFunctionOperation, self).reset()
+
+    def teardown(self):
+        with self.scoped_finish_state:
+            self.table_function_runner.close()
+
+    def progress_metrics(self):
+        metrics = super(TableFunctionOperation, self).progress_metrics()
+        metrics.processed_elements.measured.output_element_counts.clear()
+        tag = None
+        receiver = self.receivers[0]
+        metrics.processed_elements.measured.output_element_counts[
+            str(tag)] = receiver.opcounter.element_counter.value()
+        return metrics
+
+
 @bundle_processor.BeamTransformFactory.register_urn(
     SCALAR_FUNCTION_URN, flink_fn_execution_pb2.UserDefinedFunctions)
 def create(factory, transform_id, transform_proto, parameter, consumers):
@@ -287,6 +441,31 @@ def create(factory, transform_id, transform_proto, parameter, consumers):
 
 def _create_user_defined_function_operation(factory, transform_proto, consumers, udfs_proto,
                                             operation_cls=ScalarFunctionOperation):
+    output_tags = list(transform_proto.outputs.keys())
+    output_coders = factory.get_output_coders(transform_proto)
+    spec = operation_specs.WorkerDoFn(
+        serialized_fn=udfs_proto,
+        output_tags=output_tags,
+        input=None,
+        side_inputs=None,
+        output_coders=[output_coders[tag] for tag in output_tags])
+
+    return operation_cls(
+        transform_proto.unique_name,
+        spec,
+        factory.counter_factory,
+        factory.state_sampler,
+        consumers)
+
+@bundle_processor.BeamTransformFactory.register_urn(
+    TABLE_FUNCTION_URN, flink_fn_execution_pb2.UserDefinedFunctions)
+def create_table_function(factory, transform_id, transform_proto, parameter, consumers):
+    return _create_user_defined_table_function_operation(
+        factory, transform_proto, consumers, parameter.udfs)
+
+
+def _create_user_defined_table_function_operation(factory, transform_proto, consumers, udfs_proto,
+                                                  operation_cls=TableFunctionOperation):
     output_tags = list(transform_proto.outputs.keys())
     output_coders = factory.get_output_coders(transform_proto)
     spec = operation_specs.WorkerDoFn(

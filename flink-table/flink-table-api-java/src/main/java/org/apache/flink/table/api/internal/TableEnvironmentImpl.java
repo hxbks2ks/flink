@@ -257,6 +257,16 @@ public class TableEnvironmentImpl implements TableEnvironment {
 			function);
 	}
 
+	public <T> void registerFunction(String name, TableFunction<T> tableFunction) {
+		TypeInformation<T> typeInfo = UserDefinedFunctionHelper.getReturnTypeOfTableFunction(tableFunction);
+
+		functionCatalog.registerTempSystemTableFunction(
+			name,
+			tableFunction,
+			typeInfo
+		);
+	}
+
 	@Override
 	public void registerTable(String name, Table table) {
 		UnresolvedIdentifier identifier = UnresolvedIdentifier.of(name);

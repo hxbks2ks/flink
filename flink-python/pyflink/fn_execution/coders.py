@@ -70,6 +70,34 @@ class RowCoder(FastCoder):
         return hash(self._field_coders)
 
 
+class TableCoder(FastCoder):
+    """
+    Coder for Table.
+    """
+    def __init__(self, row_coder):
+        self._row_coder = row_coder
+
+    def _create_impl(self):
+        return coder_impl.TableCoderImpl(self._row_coder.get_impl())
+
+    def to_type_hint(self):
+        from pyflink.table import Row
+        return Row
+
+    def __repr__(self):
+        return 'TableCoder[%s]' % repr(self._row_coder)
+
+    def __eq__(self, other):
+        return (self.__class__ == other.__class__
+                and self._row_coder == other._row_coder)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(self._row_coder)
+
+
 class CollectionCoder(FastCoder):
     """
     Base coder for collection.
@@ -317,9 +345,9 @@ class TimestampCoder(DeterministicCoder):
         return datetime.datetime
 
 
-@Coder.register_urn(FLINK_SCHEMA_CODER_URN, flink_fn_execution_pb2.Schema)
+@Coder.register_urn(FLINK_SCHEMA_CODER_URN, flink_fn_execution_pb2.Schema.FieldType)
 def _pickle_from_runner_api_parameter(schema_proto, unused_components, unused_context):
-    return RowCoder([from_proto(f.type) for f in schema_proto.fields])
+    return from_proto(schema_proto)
 
 
 type_name = flink_fn_execution_pb2.Schema.TypeName
@@ -363,5 +391,7 @@ def from_proto(field_type):
     elif field_type_name == type_name.DECIMAL:
         return DecimalCoder(field_type.decimal_type.precision,
                             field_type.decimal_type.scale)
+    elif field_type_name == type_name.TABLE:
+        return TableCoder(RowCoder([from_proto(f.type) for f in field_type.row_schema.fields]))
     else:
         raise ValueError("field_type %s is not supported." % field_type)
