@@ -220,7 +220,9 @@ class ScalarFunctionRunner(object):
             invoker.invoke_close()
 
     def process(self, windowed_value):
-        results = [invoker.invoke_eval(windowed_value.value) for invoker in
+        value = windowed_value.value
+        value = value[0: len(value)]
+        results = [invoker.invoke_eval(value) for invoker in
                    self.scalar_function_invokers]
         result = Row(*results)
         # send the execution results back

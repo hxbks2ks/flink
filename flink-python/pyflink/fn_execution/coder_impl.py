@@ -31,6 +31,7 @@ class RowCoderImpl(StreamCoderImpl):
         self._length = len(self._field_coders)
 
     def encode_to_stream(self, value, out_stream, nested):
+        value = value[0: self._length]
         self.write_null_mask(value, out_stream)
         for i in range(self._length):
             if value[i] is not None:
