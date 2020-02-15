@@ -28,18 +28,18 @@ class RowCoderImpl(StreamCoderImpl):
 
     def __init__(self, field_coders):
         self._field_coders = field_coders
+        self._length = len(self._field_coders)
 
     def encode_to_stream(self, value, out_stream, nested):
         self.write_null_mask(value, out_stream)
-        for i in range(len(self._field_coders)):
+        for i in range(self._length):
             if value[i] is not None:
                 self._field_coders[i].encode_to_stream(value[i], out_stream, nested)
 
     def decode_from_stream(self, in_stream, nested):
-        null_mask = self.read_null_mask(len(self._field_coders), in_stream)
-        assert len(null_mask) == len(self._field_coders)
+        null_mask = self.read_null_mask(self._length, in_stream)
         return Row(*[None if null_mask[idx] else self._field_coders[idx].decode_from_stream(
-            in_stream, nested) for idx in range(0, len(null_mask))])
+            in_stream, nested) for idx in range(0, self._length)])
 
     @staticmethod
     def write_null_mask(value, out_stream):
