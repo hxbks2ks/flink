@@ -29,53 +29,80 @@ class RowCoderImpl(StreamCoderImpl):
     def __init__(self, field_coders):
         self._field_coders = field_coders
         self._length = len(self._field_coders)
+        self._complete_byte_num = self._length // 8
+        self._remaining_bit_num = self._length % 8
 
     def encode_to_stream(self, value, out_stream, nested):
         value = value[0: self._length]
-        self.write_null_mask(value, out_stream)
+        self.write_null_mask(value, self._complete_byte_num, self._remaining_bit_num, out_stream)
         for i in range(self._length):
             if value[i] is not None:
                 self._field_coders[i].encode_to_stream(value[i], out_stream, nested)
 
     def decode_from_stream(self, in_stream, nested):
-        null_mask = self.read_null_mask(self._length, in_stream)
+        null_mask = self.read_null_mask(self._complete_byte_num, self._remaining_bit_num, in_stream)
         return Row(*[None if null_mask[idx] else self._field_coders[idx].decode_from_stream(
             in_stream, nested) for idx in range(0, self._length)])
 
     @staticmethod
-    def write_null_mask(value, out_stream):
+    def write_null_mask(value, complete_byte_num, remaining_bit_num, out_stream):
         field_pos = 0
-        field_count = len(value)
-        while field_pos < field_count:
+        for _ in range(complete_byte_num):
             b = 0x00
-            # set bits in byte
-            num_pos = min(8, field_count - field_pos)
-            byte_pos = 0
-            while byte_pos < num_pos:
-                b = b << 1
-                # set bit if field is null
-                if value[field_pos + byte_pos] is None:
+            if value[field_pos] is None:
+                b |= 0x80
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x40
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x20
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x10
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x08
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x04
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x02
+            field_pos += 1
+            if value[field_pos] is None:
+                b |= 0x01
+            field_pos += 1
+            out_stream.write_byte(b)
+
+        if remaining_bit_num != 0:
+            b = 0x00
+            for i in range(remaining_bit_num):
+                b <<= 1
+                if value[field_pos + i] is None:
                     b |= 0x01
-                byte_pos += 1
-            field_pos += num_pos
-            # shift bits if last byte is not completely filled
-            b <<= (8 - byte_pos)
-            # write byte
+            b <<= (8 - remaining_bit_num)
             out_stream.write_byte(b)
 
     @staticmethod
-    def read_null_mask(field_count, in_stream):
+    def read_null_mask(complete_byte_num, remaining_bit_num, in_stream):
         null_mask = []
-        field_pos = 0
-        while field_pos < field_count:
+        for _ in range(complete_byte_num):
             b = in_stream.read_byte()
-            num_pos = min(8, field_count - field_pos)
-            byte_pos = 0
-            while byte_pos < num_pos:
+            null_mask.append((b & 0x80) > 0)
+            null_mask.append((b & 0x40) > 0)
+            null_mask.append((b & 0x20) > 0)
+            null_mask.append((b & 0x10) > 0)
+            null_mask.append((b & 0x08) > 0)
+            null_mask.append((b & 0x04) > 0)
+            null_mask.append((b & 0x02) > 0)
+            null_mask.append((b & 0x01) > 0)
+
+        if remaining_bit_num != 0:
+            b = in_stream.read_byte()
+            for _ in range(remaining_bit_num):
                 null_mask.append((b & 0x80) > 0)
                 b = b << 1
-                byte_pos += 1
-            field_pos += num_pos
         return null_mask
 
     def __repr__(self):
