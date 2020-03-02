@@ -23,7 +23,7 @@ from pyflink.testing.test_case_utils import PyFlinkStreamTableTestCase, \
     PyFlinkBatchTableTestCase
 
 
-class UserDefinedFunctionTests(object):
+class UserDefinedFunctionTests(PyFlinkBlinkBatchTableTestCase):
 
     def test_scalar_function(self):
         # test lambda function
@@ -76,6 +76,8 @@ class UserDefinedFunctionTests(object):
             ['a', 'b', 'c'],
             [DataTypes.BIGINT(), DataTypes.BIGINT(), DataTypes.INT()])
         self.t_env.register_table_sink("Results", table_sink)
+        self.t_env.get_config().get_configuration().set_integer("python.fn-execution.bundle.size",
+                                                           300000)
 
         t = self.t_env.from_elements([(1, 2, 1), (2, 5, 2), (3, 1, 3)], ['a', 'b', 'c'])
         t.select("add(add_one(a), subtract_one(b)), c, 1") \

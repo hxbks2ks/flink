@@ -17,7 +17,7 @@
 # limitations under the License.
 ################################################################################
 retry_times=3
-install_command="python -m pip install $@"
+install_command="python -m pip install -i http://pypi.douban.com/simple --trusted-host pypi.douban.com $@"
 ${install_command}
 status=$?
 while [[ ${status} -ne 0 ]] && [[ ${retry_times} -gt 0 ]]; do

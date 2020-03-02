@@ -205,6 +205,9 @@ under the License.
 				<includes>
 					<include>*.zip</include>
 				</includes>
+				<excludes>
+					<exclude>pyflink.zip</exclude>
+				</excludes>
 			</resource>
 			<resource>
 				<directory>bin</directory>

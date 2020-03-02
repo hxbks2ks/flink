@@ -32,7 +32,7 @@ import java.util.List;
 public class ResourceUtil {
 
 	public static final String[] BUILT_IN_PYTHON_DEPENDENCIES = {
-		"pyflink.zip",
+//		"pyflink.zip",
 		"py4j-0.10.8.1-src.zip",
 		"cloudpickle-1.2.2-src.zip",
 		"pyflink-udf-runner.sh"

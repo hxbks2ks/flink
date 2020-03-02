@@ -18,6 +18,9 @@
 
 import sys
 
+# try:
+#     import pyflink.fn_execution.fast_operations  # noqa # pylint:  disable=unused-import
+# except ImportError:
 # force to register the operations to SDK Harness
 import pyflink.fn_execution.operations # noqa # pylint:  disable=unused-import
 

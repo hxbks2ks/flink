@@ -19,7 +19,7 @@
 import datetime
 import decimal
 import struct
-from apache_beam.coders.coder_impl import StreamCoderImpl
+from apache_beam.coders.coder_impl import StreamCoderImpl, create_OutputStream
 
 from pyflink.table import Row
 
@@ -48,18 +48,27 @@ class FlattenRowCoderImpl(StreamCoderImpl):
 
         return tuple(null_mask)
 
-    def encode_to_stream(self, value, out_stream, nested):
-        self.write_null_mask(value, out_stream)
+    def encode_to_stream(self, iter, out_stream, nested):
         field_coders = self._field_coders
-        for i in range(self._filed_count):
-            item = value[i]
-            if item is not None:
-                field_coders[i].encode_to_stream(item, out_stream, nested)
+        data_out_stream = create_OutputStream()
+        for value in iter:
+            self.write_null_mask(value, data_out_stream)
+            for i in range(self._filed_count):
+                item = value[i]
+                if item is not None:
+                    field_coders[i].encode_to_stream(item, data_out_stream, nested)
+            out_stream.write_var_int64(data_out_stream.size())
+            out_stream.write(data_out_stream.get())
+            data_out_stream._clear()
 
     def decode_from_stream(self, in_stream, nested):
+        while in_stream.size() > 0:
+            yield self.create_result(in_stream, nested)
+
+    def create_result(self, in_stream, nested):
+        in_stream.read_var_int64()
         null_mask = self.read_null_mask(in_stream)
-        field_coders = self._field_coders
-        return [None if null_mask[idx] else field_coders[idx].decode_from_stream(
+        return [None if null_mask[idx] else self._field_coders[idx].decode_from_stream(
             in_stream, nested) for idx in range(0, self._filed_count)]
 
     def write_null_mask(self, value, out_stream):
@@ -94,8 +103,59 @@ class FlattenRowCoderImpl(StreamCoderImpl):
             null_mask.extend(null_mask_search_table[b][0:remaining_bits_num])
         return null_mask
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        count = self._leading_complete_bytes_num + 1
+        for file_coder in self._field_coders:
+            count += file_coder.get_estimated_size_and_observables(value)
+        return count, []
+
+    def estimate_size(self, value, nested=False):
+        count = self._leading_complete_bytes_num + 1
+        for file_coder in self._field_coders:
+            count += file_coder.get_estimated_size_and_observables(value)
+        return count
+
     def __repr__(self):
         return 'FlattenRowCoderImpl[%s]' % ', '.join(str(c) for c in self._field_coders)
+
+
+class CustomLengthPrefixCoderImpl(StreamCoderImpl):
+    def __init__(self, value_coder):
+        self._value_coder = value_coder
+
+    def encode_to_stream(self, value, out, nested):
+        # encoded_value = self._value_coder.encode(value)
+        # out.write_var_int64(len(encoded_value))
+        # out.write(encoded_value)
+        self._value_coder.encode_to_stream(value, out, nested)
+
+    def decode_from_stream(self, in_stream, nested):
+        # in_stream.read_var_int64()
+        return self._value_coder.decode_from_stream(in_stream, False)
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 0, []
+
+    def estimate_size(self, value, nested=False):
+        # value_size = self._value_coder.estimate_size(value)
+        # return self.get_varint_size(value_size) + value_size
+        return 0
+
+    # def get_varint_size(self, v):
+    #     """For internal use only; no backwards-compatibility guarantees.
+    #
+    #     Returns the size of the given integer value when encode as a VarInt."""
+    #     if v < 0:
+    #         v += 1 << 64
+    #         if v <= 0:
+    #             raise ValueError('Value too large (negative).')
+    #     varint_size = 0
+    #     while True:
+    #         varint_size += 1
+    #         v >>= 7
+    #         if not v:
+    #             break
+    #     return varint_size
 
 
 class RowCoderImpl(FlattenRowCoderImpl):
@@ -126,6 +186,9 @@ class TableFunctionRowCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         return self._flatten_row_coder.decode_from_stream(in_stream, nested)
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return self._flatten_row_coder.get_estimated_size_and_observables(value, nested)
+
     def __repr__(self):
         return 'TableFunctionRowCoderImpl[%s]' % repr(self._flatten_row_coder)
 
@@ -149,6 +212,9 @@ class ArrayCoderImpl(StreamCoderImpl):
         elements = [self._elem_coder.decode_from_stream(in_stream, nested)
                     if in_stream.read_byte() else None for _ in range(size)]
         return elements
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 0
 
     def __repr__(self):
         return 'ArrayCoderImpl[%s]' % repr(self._elem_coder)
@@ -195,6 +261,9 @@ class BigIntCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         return in_stream.read_bigendian_int64()
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 8
+
 
 class TinyIntCoderImpl(StreamCoderImpl):
 
@@ -203,6 +272,9 @@ class TinyIntCoderImpl(StreamCoderImpl):
 
     def decode_from_stream(self, in_stream, nested):
         return struct.unpack('b', in_stream.read(1))[0]
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 1
 
 
 class SmallIntImpl(StreamCoderImpl):
@@ -213,6 +285,9 @@ class SmallIntImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         return struct.unpack('>h', in_stream.read(2))[0]
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 2
+
 
 class IntCoderImpl(StreamCoderImpl):
     def encode_to_stream(self, value, out_stream, nested):
@@ -220,6 +295,9 @@ class IntCoderImpl(StreamCoderImpl):
 
     def decode_from_stream(self, in_stream, nested):
         return in_stream.read_bigendian_int32()
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 4
 
 
 class BooleanCoderImpl(StreamCoderImpl):
@@ -230,6 +308,9 @@ class BooleanCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         return not not in_stream.read_byte()
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 1
+
 
 class FloatCoderImpl(StreamCoderImpl):
 
@@ -239,6 +320,9 @@ class FloatCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         return struct.unpack('>f', in_stream.read(4))[0]
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 4
+
 
 class DoubleCoderImpl(StreamCoderImpl):
 
@@ -247,6 +331,9 @@ class DoubleCoderImpl(StreamCoderImpl):
 
     def decode_from_stream(self, in_stream, nested):
         return in_stream.read_bigendian_double()
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 8
 
 
 class DecimalCoderImpl(StreamCoderImpl):
@@ -272,6 +359,9 @@ class DecimalCoderImpl(StreamCoderImpl):
         decimal.setcontext(user_context)
         return value
 
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 4 + len(value)
+
 
 class BinaryCoderImpl(StreamCoderImpl):
 
@@ -282,6 +372,9 @@ class BinaryCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         size = in_stream.read_bigendian_int32()
         return in_stream.read(size)
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 4 + len(value)
 
 
 class CharCoderImpl(StreamCoderImpl):
@@ -294,6 +387,9 @@ class CharCoderImpl(StreamCoderImpl):
     def decode_from_stream(self, in_stream, nested):
         size = in_stream.read_bigendian_int32()
         return in_stream.read(size).decode("utf-8")
+
+    def get_estimated_size_and_observables(self, value, nested=False):
+        return 0
 
 
 class DateCoderImpl(StreamCoderImpl):

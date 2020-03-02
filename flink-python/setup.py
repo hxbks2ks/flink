@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import io
 import os
+import platform
 import sys
 from shutil import copytree, copy, rmtree
 
@@ -37,6 +38,17 @@ def remove_if_exists(file_path):
         else:
             assert os.path.isdir(file_path)
             rmtree(file_path)
+
+
+if platform.system() == 'Windows':
+    # Windows doesn't always provide int64_t.
+    cythonize = lambda *args, **kwargs: []
+else:
+    try:
+        # pylint: disable=wrong-import-position
+        from Cython.Build import cythonize
+    except ImportError:
+        cythonize = lambda *args, **kwargs: []
 
 
 this_directory = os.path.abspath(os.path.dirname(__file__))
@@ -200,7 +212,8 @@ run sdist.
         'pyflink.log': ['*'],
         'pyflink.examples': ['*.py', '*/*.py'],
         'pyflink.plugins': ['*', '*/*'],
-        'pyflink.bin': ['*']}
+        'pyflink.bin': ['*'],
+        'pyflink.fn_execution': ['*.pyx', '*/*.pyx', '*.pxd', '*/*.pxd']}
 
     if exist_licenses:
         PACKAGES.append('pyflink.licenses')
@@ -229,12 +242,17 @@ run sdist.
         description='Apache Flink Python API',
         long_description=long_description,
         long_description_content_type='text/markdown',
+        zip_safe=False,
         classifiers=[
             'Development Status :: 5 - Production/Stable',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
-            'Programming Language :: Python :: 3.7']
+            'Programming Language :: Python :: 3.7'],
+        ext_modules=cythonize([
+            'pyflink/fn_execution/fast_coder_impl.pyx',
+            'pyflink/fn_execution/fast_operations.pyx',
+        ])
     )
 finally:
     if in_flink_source:

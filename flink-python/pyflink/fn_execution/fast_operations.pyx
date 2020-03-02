@@ -1,37 +1,37 @@
-################################################################################
-#  Licensed to the Apache Software Foundation (ASF) under one
-#  or more contributor license agreements.  See the NOTICE file
-#  distributed with this work for additional information
-#  regarding copyright ownership.  The ASF licenses this file
-#  to you under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance
-#  with the License.  You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
 #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
 # limitations under the License.
-################################################################################
+#
+# cython: language_level = 3
+# cython: infer_types = True
+# cython: profile=True
 
 import datetime
 
 import cloudpickle
-from apache_beam.runners.worker import operation_specs
 from apache_beam.runners.worker import bundle_processor
-from apache_beam.runners.worker.operations import Operation
+from apache_beam.runners.worker import operation_specs
+from pyflink.table.udf import DelegatingScalarFunction
 
 from pyflink.fn_execution import flink_fn_execution_pb2
 from pyflink.serializers import PickleSerializer
-from pyflink.table.udf import DelegatingScalarFunction, DelegationTableFunction
 
 SCALAR_FUNCTION_URN = "flink:transform:scalar_function:v1"
 TABLE_FUNCTION_URN = "flink:transform:table_function:v1"
 
-
-class StatelessFunctionOperation(Operation):
+cdef class StatelessFunctionOperation(Operation):
     """
     Base class of stateless function operation that will execute ScalarFunction or TableFunction for
     each input element.
@@ -44,43 +44,27 @@ class StatelessFunctionOperation(Operation):
 
         self.variable_dict = {}
         self.user_defined_funcs = []
+        self._func_num = 0
+        self._constant_num = 0
         self.func = self.generate_func(self.spec.serialized_fn)
         for user_defined_func in self.user_defined_funcs:
             user_defined_func.open(None)
 
-    def setup(self):
-        super(StatelessFunctionOperation, self).setup()
-
-    def start(self):
+    cpdef start(self):
         with self.scoped_start_state:
             super(StatelessFunctionOperation, self).start()
 
-    def finish(self):
+    cpdef finish(self):
         super(StatelessFunctionOperation, self).finish()
 
-    def needs_finalization(self):
-        return False
-
-    def reset(self):
-        super(StatelessFunctionOperation, self).reset()
-
-    def teardown(self):
+    cpdef teardown(self):
         for user_defined_func in self.user_defined_funcs:
             user_defined_func.close(None)
 
-    def progress_metrics(self):
-        metrics = super(StatelessFunctionOperation, self).progress_metrics()
-        metrics.processed_elements.measured.output_element_counts.clear()
-        tag = None
-        receiver = self.receivers[0]
-        metrics.processed_elements.measured.output_element_counts[
-            str(tag)] = receiver.opcounter.element_counter.value()
-        return metrics
-
-    def generate_func(self, udfs):
+    cpdef generate_func(self, udfs):
         pass
 
-    def _extract_user_defined_function(self, user_defined_function_proto):
+    cpdef str _extract_user_defined_function(self, user_defined_function_proto):
         """
         Extracts user-defined-function from the proto representation of a
         :class:`UserDefinedFunction`.
@@ -88,17 +72,10 @@ class StatelessFunctionOperation(Operation):
         :param user_defined_function_proto: the proto representation of the Python
         :class:`UserDefinedFunction`
         """
-        def _next_func_num():
-            if not hasattr(self, "_func_num"):
-                self._func_num = 0
-            else:
-                self._func_num += 1
-            return self._func_num
-
         user_defined_func = cloudpickle.loads(user_defined_function_proto.payload)
-        func_name = 'f%s' % _next_func_num()
-        if isinstance(user_defined_func, DelegatingScalarFunction) or \
-                isinstance(user_defined_func, DelegationTableFunction):
+        func_name = 'f%s' % self._func_num
+        self._func_num += 1
+        if isinstance(user_defined_func, DelegatingScalarFunction):
             self.variable_dict[func_name] = user_defined_func.func
         else:
             self.variable_dict[func_name] = user_defined_func.eval
@@ -106,7 +83,7 @@ class StatelessFunctionOperation(Operation):
         func_args = self._extract_user_defined_function_args(user_defined_function_proto.inputs)
         return "%s(%s)" % (func_name, func_args)
 
-    def _extract_user_defined_function_args(self, args):
+    cpdef str _extract_user_defined_function_args(self, args):
         args_str = []
         for arg in args:
             if arg.HasField("udf"):
@@ -120,7 +97,7 @@ class StatelessFunctionOperation(Operation):
                 args_str.append(self._parse_constant_value(arg.inputConstant))
         return ",".join(args_str)
 
-    def _parse_constant_value(self, constant_value):
+    cpdef str _parse_constant_value(self, constant_value):
         j_type = constant_value[0]
         serializer = PickleSerializer()
         pickled_data = serializer.loads(constant_value[1:])
@@ -147,45 +124,39 @@ class StatelessFunctionOperation(Operation):
         else:
             raise Exception("Unknown type %s, should never happen" % str(j_type))
 
-        def _next_constant_num():
-            if not hasattr(self, "_constant_num"):
-                self._constant_num = 0
-            else:
-                self._constant_num += 1
-            return self._constant_num
-
-        constant_value_name = 'c%s' % _next_constant_num()
+        constant_value_name = 'c%s' % self._constant_num
+        self._constant_num += 1
         self.variable_dict[constant_value_name] = parsed_constant_value
         return constant_value_name
 
-
-class ScalarFunctionOperation(StatelessFunctionOperation):
+cdef class ScalarFunctionOperation(StatelessFunctionOperation):
     def __init__(self, name, spec, counter_factory, sampler, consumers):
         super(ScalarFunctionOperation, self).__init__(
             name, spec, counter_factory, sampler, consumers)
 
-    def generate_func(self, udfs):
+    cpdef generate_func(self, udfs):
         """
         Generates a lambda function based on udfs.
         :param udfs: a list of the proto representation of the Python :class:`ScalarFunction`
         :return: the generated lambda function
         """
         scalar_functions = [self._extract_user_defined_function(udf) for udf in udfs]
-        mapper = eval('lambda value: [%s]' % ','.join(scalar_functions), self.variable_dict)
-        return lambda it: map(mapper, it)
+        # from Cython.Build import Inline
+        # return Inline.cython_inline('return lambda value: [%s]' % ','.join(scalar_functions),
+        #                             locals=self.variable_dict, globals={})
+        return eval('lambda value: [%s]' % ','.join(scalar_functions), self.variable_dict)
 
-    def process(self, o):
+    cpdef process(self, WindowedValue o):
         output_stream = self.consumer.output_stream
         self._value_coder_impl.encode_to_stream(self.func(o.value), output_stream, True)
         output_stream.maybe_flush()
 
-
-class TableFunctionOperation(StatelessFunctionOperation):
+cdef class TableFunctionOperation(StatelessFunctionOperation):
     def __init__(self, name, spec, counter_factory, sampler, consumers):
         super(TableFunctionOperation, self).__init__(
             name, spec, counter_factory, sampler, consumers)
 
-    def generate_func(self, udtfs):
+    cpdef generate_func(self, udtfs):
         """
         Generates a lambda function based on udtfs.
         :param udtfs: a list of the proto representation of the Python :class:`TableFunction`
@@ -194,18 +165,17 @@ class TableFunctionOperation(StatelessFunctionOperation):
         table_function = self._extract_user_defined_function(udtfs[0])
         return eval('lambda value: %s' % table_function, self.variable_dict)
 
-    def process(self, o):
+    cpdef process(self, WindowedValue o):
         output_stream = self.consumer.output_stream
         for result in self._create_result(o.value):
             self._value_coder_impl.encode_to_stream(result, output_stream, True)
         output_stream.maybe_flush()
 
-    def _create_result(self, value):
+    def _create_result(self, list value):
         result = self.func(value)
         if result is not None:
             yield from result
         yield None
-
 
 @bundle_processor.BeamTransformFactory.register_urn(
     SCALAR_FUNCTION_URN, flink_fn_execution_pb2.UserDefinedFunctions)
@@ -213,13 +183,11 @@ def create_scalar_function(factory, transform_id, transform_proto, parameter, co
     return _create_user_defined_function_operation(
         factory, transform_proto, consumers, parameter.udfs, ScalarFunctionOperation)
 
-
 @bundle_processor.BeamTransformFactory.register_urn(
     TABLE_FUNCTION_URN, flink_fn_execution_pb2.UserDefinedFunctions)
 def create_table_function(factory, transform_id, transform_proto, parameter, consumers):
     return _create_user_defined_function_operation(
         factory, transform_proto, consumers, parameter.udfs, TableFunctionOperation)
-
 
 def _create_user_defined_function_operation(factory, transform_proto, consumers, udfs_proto,
                                             operation_cls):
