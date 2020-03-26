@@ -22,16 +22,16 @@ from abc import ABC
 import datetime
 import decimal
 import pyarrow as pa
-import pytz
 from apache_beam.coders import Coder
 from apache_beam.coders.coders import FastCoder, LengthPrefixCoder
-from apache_beam.options.pipeline_options import DebugOptions
 from apache_beam.portability import common_urns
 from apache_beam.typehints import typehints
 
-from pyflink.fn_execution import coder_impl
+# try:
+from pyflink.fn_execution import fast_coder_impl as coder_impl
+# except ImportError:
+# from pyflink.fn_execution import coder_impl
 from pyflink.fn_execution import flink_fn_execution_pb2
-from pyflink.fn_execution.sdk_worker_main import pipeline_options
 from pyflink.table import Row
 
 FLINK_SCALAR_FUNCTION_SCHEMA_CODER_URN = "flink:coder:schema:scalar_function:v1"
@@ -143,6 +143,9 @@ class CollectionCoder(FastCoder):
     def _create_impl(self):
         raise NotImplementedError
 
+    def get_impl(self):
+        return self._create_impl()
+
     def is_deterministic(self):
         return self._elem_coder.is_deterministic()
 
@@ -188,6 +191,9 @@ class MapCoder(FastCoder):
     def _create_impl(self):
         return coder_impl.MapCoderImpl(self._key_coder.get_impl(), self._value_coder.get_impl())
 
+    def get_impl(self):
+        return self._create_impl()
+
     def is_deterministic(self):
         return self._key_coder.is_deterministic() and self._value_coder.is_deterministic()
 
@@ -216,6 +222,9 @@ class DeterministicCoder(FastCoder, ABC):
 
     def is_deterministic(self):
         return True
+
+    def get_impl(self):
+        return self._create_impl()
 
 
 class BigIntCoder(DeterministicCoder):
@@ -260,7 +269,7 @@ class SmallIntCoder(DeterministicCoder):
     """
 
     def _create_impl(self):
-        return coder_impl.SmallIntImpl()
+        return coder_impl.SmallIntCoderImpl()
 
     def to_type_hint(self):
         return int
