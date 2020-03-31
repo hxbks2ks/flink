@@ -49,6 +49,7 @@ variables:
   SECRET_S3_BUCKET: $[variables.IT_CASE_S3_BUCKET]
   SECRET_S3_ACCESS_KEY: $[variables.IT_CASE_S3_ACCESS_KEY]
   SECRET_S3_SECRET_KEY: $[variables.IT_CASE_S3_SECRET_KEY]
+  VERSION: '1.11-SNAPSHOT'
 
 stages:
   # CI / PR triggered stage:
@@ -73,56 +74,61 @@ stages:
     dependsOn: [] # depending on an empty array makes the stages run in parallel
     condition: or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['MODE'], 'nightly'))
     jobs:
-      - template: jobs-template.yml
+#      - template: jobs-template.yml
+#        parameters:
+#          stage_name: cron_hadoop241
+#          test_pool_definition:
+#            name: Default
+#          e2e_pool_definition:
+#            vmImage: 'ubuntu-16.04'
+#          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.4.1 -Pskip-hive-tests -Pe2e-hadoop -Pe2e-pre-commit"
+#          run_end_to_end: true
+#          container: flink-build-container
+#          jdk: jdk8
+#      - template: jobs-template.yml
+#        parameters:
+#          stage_name: cron_scala212
+#          test_pool_definition:
+#            name: Default
+#          e2e_pool_definition:
+#            vmImage: 'ubuntu-16.04'
+#          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.8.3 -Dinclude_hadoop_aws -Dscala-2.12 -Phive-1.2.1 -Pe2e-hadoop -Pe2e-pre-commit"
+#          run_end_to_end: true
+#          container: flink-build-container
+#          jdk: jdk8
+#      - template: jobs-template.yml
+#        parameters:
+#          stage_name: cron_jdk11
+#          test_pool_definition:
+#            name: Default
+#          e2e_pool_definition:
+#            vmImage: 'ubuntu-16.04'
+#          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.8.3 -Dinclude_hadoop_aws -Dscala-2.11 -Djdk11 -Pe2e-hadoop -Pe2e-pre-commit"
+#          run_end_to_end: true
+#          container: flink-build-container
+#          jdk: jdk11
+#      - template: jobs-template.yml
+#        parameters:
+#          stage_name: cron_hadoopfree
+#          test_pool_definition:
+#            name: Default
+#          e2e_pool_definition:
+#            vmImage: 'ubuntu-16.04'
+#          environment: PROFILE=""
+#          run_end_to_end: true
+#          container: flink-build-container
+#          jdk: jdk8
+#      - job: docs_404_check # run on a MSFT provided machine
+#        pool:
+#          vmImage: 'ubuntu-16.04'
+#        steps:
+#        - task: UseRubyVersion@0
+#          inputs:
+#            versionSpec: '= 2.4'
+#            addToPath: true
+#        - script: ./tools/travis/docs.sh
+      - template: build-python-wheels.yml
         parameters:
-          stage_name: cron_hadoop241
-          test_pool_definition:
-            name: Default
-          e2e_pool_definition:
-            vmImage: 'ubuntu-16.04'
-          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.4.1 -Pskip-hive-tests -Pe2e-hadoop -Pe2e-pre-commit"
-          run_end_to_end: true
+          stage_name: build_python_wheels
+          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.8.3 -Dinclude_hadoop_aws -Dscala-2.11 -Pe2e-hadoop -Pe2e-pre-commit"
           container: flink-build-container
-          jdk: jdk8
-      - template: jobs-template.yml
-        parameters:
-          stage_name: cron_scala212
-          test_pool_definition:
-            name: Default
-          e2e_pool_definition:
-            vmImage: 'ubuntu-16.04'
-          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.8.3 -Dinclude_hadoop_aws -Dscala-2.12 -Phive-1.2.1 -Pe2e-hadoop -Pe2e-pre-commit"
-          run_end_to_end: true
-          container: flink-build-container
-          jdk: jdk8
-      - template: jobs-template.yml
-        parameters:
-          stage_name: cron_jdk11
-          test_pool_definition:
-            name: Default
-          e2e_pool_definition:
-            vmImage: 'ubuntu-16.04'
-          environment: PROFILE="-Dinclude-hadoop -Dhadoop.version=2.8.3 -Dinclude_hadoop_aws -Dscala-2.11 -Djdk11 -Pe2e-hadoop -Pe2e-pre-commit"
-          run_end_to_end: true
-          container: flink-build-container
-          jdk: jdk11
-      - template: jobs-template.yml
-        parameters:
-          stage_name: cron_hadoopfree
-          test_pool_definition:
-            name: Default
-          e2e_pool_definition:
-            vmImage: 'ubuntu-16.04'
-          environment: PROFILE=""
-          run_end_to_end: true
-          container: flink-build-container
-          jdk: jdk8
-      - job: docs_404_check # run on a MSFT provided machine
-        pool: 
-          vmImage: 'ubuntu-16.04'
-        steps:
-        - task: UseRubyVersion@0
-          inputs:
-            versionSpec: '= 2.4'
-            addToPath: true
-        - script: ./tools/travis/docs.sh
