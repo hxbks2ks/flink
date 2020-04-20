@@ -303,7 +303,7 @@ function install_sphinx() {
     fi
 
 #    $CONDA_PATH install -p $CONDA_HOME -c anaconda sphinx -y -q 2>&1 >/dev/null
-    $PIP_PATH install -q sphix==1.8.5 2>&1 >/dev/null
+    $PIP_PATH install -q Sphinx==3.0.2 2>&1 >/dev/null
     if [ $? -ne 0 ]; then
         echo "conda install sphinx failed \
         please try to exec the script again.\
