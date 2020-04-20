@@ -169,7 +169,7 @@ elif [ $STAGE != "$STAGE_CLEANUP" ]; then
         # run mvn install (w/o "clean"):
         PY_MVN="${MVN// clean/}"
         PY_MVN="$PY_MVN -Drat.skip=true"
-        ${PY_MVN}
+#        ${PY_MVN}
         EXIT_CODE=$?
 
         if [ $EXIT_CODE != 0 ]; then
