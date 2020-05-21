@@ -34,11 +34,20 @@ jobs:
           cd $(Pipeline.Workspace)
           tar czf $(Pipeline.Workspace)/flink.tar.gz flink_cache/flink-dist/target/flink-$(set_version.VERSION)-bin/flink-$(set_version.VERSION)
         displayName: Compress in tgz
+      - script: |
+          cd $(Pipeline.Workspace)
+          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-20.1.0/graalvm-ce-java8-darwin-amd64-20.1.0.tar.gz
+          ls -al
 
       # upload artifacts for building wheels
       - task: PublishPipelineArtifact@1
         inputs:
           targetPath: $(Pipeline.Workspace)/flink.tar.gz
+          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+      # upload graalvm
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: $(Pipeline.Workspace)/graalvm-ce-java8-darwin-amd64-20.1.0.tar.gz
           artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
 
   - job: build_wheels
