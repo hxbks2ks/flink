@@ -36,7 +36,6 @@ jobs:
 #        displayName: Compress in tgz
       - script: |
           cd $(Pipeline.Workspace)
-#          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/graalvm-ce-java8-darwin-amd64-19.3.1.tar.gz
           wget https://github.com/graalvm/graalpython/releases/download/vm-19.3.1/python-installable-svm-java8-darwin-amd64-19.3.1.jar
           wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
           wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
