@@ -36,7 +36,10 @@ jobs:
 #        displayName: Compress in tgz
       - script: |
           cd $(Pipeline.Workspace)
-          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/graalvm-ce-java8-darwin-amd64-19.3.1.tar.gz
+#          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/graalvm-ce-java8-darwin-amd64-19.3.1.tar.gz
+          wget https://github.com/graalvm/graalpython/releases/download/vm-19.3.1/python-installable-svm-java8-darwin-amd64-19.3.1.jar
+          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
+          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
           ls -al
 
 #      # upload artifacts for building wheels
@@ -45,9 +48,24 @@ jobs:
 #          targetPath: $(Pipeline.Workspace)/flink.tar.gz
 #          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
       # upload graalvm
+#      - task: PublishPipelineArtifact@1
+#        inputs:
+#          targetPath: $(Pipeline.Workspace)/graalvm-ce-java8-darwin-amd64-19.3.1.tar.gz
+#          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: $(Pipeline.Workspace)/graalvm-ce-java8-darwin-amd64-19.3.1.tar.gz
+          targetPath: $(Pipeline.Workspace)/python-installable-svm-java8-darwin-amd64-19.3.1.jar
+          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: $(Pipeline.Workspace)/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
+          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: $(Pipeline.Workspace)/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
           artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
 
 #  - job: build_wheels
