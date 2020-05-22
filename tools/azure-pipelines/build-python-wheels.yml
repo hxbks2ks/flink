@@ -60,12 +60,12 @@ jobs:
       - task: PublishPipelineArtifact@1
         inputs:
           targetPath: $(Pipeline.Workspace)/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
-          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-1
 
       - task: PublishPipelineArtifact@1
         inputs:
           targetPath: $(Pipeline.Workspace)/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
-          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
+          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-2
 
 #  - job: build_wheels
 #    dependsOn: compile_${{parameters.stage_name}}
