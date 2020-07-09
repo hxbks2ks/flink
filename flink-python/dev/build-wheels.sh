@@ -35,7 +35,7 @@ if [[ "$(expr substr $(uname -s) 1 5)"=="Linux" ]]; then
     source `pwd`/dev/.conda/bin/activate
     pip install auditwheel
     which auditwheel
-    auditwheel dist/*.whl
+    auditwheel repair dist/*.whl
     conda deactivate
 fi
 
