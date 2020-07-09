@@ -30,5 +30,14 @@ for ((i=0;i<${#py_env[@]};i++)) do
     ${PY_ENV_DIR}/${py_env[i]}/bin/python setup.py bdist_wheel
 done
 
+if ["$(expr substr $(uname -s) 1 5)"=="Linux"]; then
+    echo "haha"
+    source `pwd`/dev/.conda/bin/activate
+    pip install auditwheel
+    which auditwheel
+    auditwheel dist/*.whl
+    conda deactivate
+fi
+
 ## see the result
 ls -al dist/
