@@ -30,12 +30,20 @@ for ((i=0;i<${#py_env[@]};i++)) do
     ${PY_ENV_DIR}/${py_env[i]}/bin/python setup.py bdist_wheel
 done
 
-if [[ "$(expr substr $(uname -s) 1 5)"=="Linux" ]]; then
-    echo "haha"
+if [[ "$(uname)" == "Darwin" ]]; then
+    echo "mac"
+else
+    echo "Linux"
     source `pwd`/dev/.conda/bin/activate
     pip install auditwheel
     which auditwheel
-    auditwheel repair dist/*.whl
+    for wheel_file in dist/*linux_x86_64.whl; do
+        auditwheel repair ${wheel_file}
+    done
+    ls -al dist/wheelhouse/
+    rm -rf dist/*.whl
+    mv dist/wheelhouse/* dist/
+    rm -rf dist/wheelhouse/
     conda deactivate
 fi
 
