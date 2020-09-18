@@ -36,9 +36,10 @@ jobs:
 #        displayName: Compress in tgz
       - script: |
           cd $(Pipeline.Workspace)
-          wget https://github.com/graalvm/graalpython/releases/download/vm-19.3.1/python-installable-svm-java8-darwin-amd64-19.3.1.jar
-          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
-          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
+          wget https://github.com/prometheus/prometheus/releases/download/v2.21.0/prometheus-2.21.0.darwin-amd64.tar.gz
+#          wget https://github.com/graalvm/graalpython/releases/download/vm-19.3.1/python-installable-svm-java8-darwin-amd64-19.3.1.jar
+#          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
+#          wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-19.3.1/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
           ls -al
 
 #      # upload artifacts for building wheels
@@ -54,18 +55,18 @@ jobs:
 
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: $(Pipeline.Workspace)/python-installable-svm-java8-darwin-amd64-19.3.1.jar
+          targetPath: $(Pipeline.Workspace)/prometheus-2.21.0.darwin-amd64.tar.gz
           artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}
 
-      - task: PublishPipelineArtifact@1
-        inputs:
-          targetPath: $(Pipeline.Workspace)/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
-          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-1
-
-      - task: PublishPipelineArtifact@1
-        inputs:
-          targetPath: $(Pipeline.Workspace)/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
-          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-2
+#      - task: PublishPipelineArtifact@1
+#        inputs:
+#          targetPath: $(Pipeline.Workspace)/llvm-toolchain-installable-java8-darwin-amd64-19.3.1.jar
+#          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-1
+#
+#      - task: PublishPipelineArtifact@1
+#        inputs:
+#          targetPath: $(Pipeline.Workspace)/native-image-installable-svm-java8-darwin-amd64-19.3.1.jar
+#          artifactName: FlinkCompileCacheDir-${{parameters.stage_name}}-2
 
 #  - job: build_wheels
 #    dependsOn: compile_${{parameters.stage_name}}
