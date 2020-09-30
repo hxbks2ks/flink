@@ -529,6 +529,7 @@ function check_stage() {
 #########################
 # Tox check
 function tox_check() {
+    LATEST_PYTHON="py38"
     print_function "STAGE" "tox checks"
     # Set created py-env in $PATH for tox's creating virtual env
     activate
@@ -536,7 +537,11 @@ function tox_check() {
     chmod +x $FLINK_PYTHON_DIR/../build-target/bin/*
     chmod +x $FLINK_PYTHON_DIR/dev/*
 
-    $TOX_PATH -c $FLINK_PYTHON_DIR/tox.ini --recreate 2>&1 | tee -a $LOG_FILE
+    if [[ ${BUILD_REASON} = 'IndividualCI' ]]; then
+        $TOX_PATH -c $FLINK_PYTHON_DIR/tox.ini -e ${LATEST_PYTHON} --recreate 2>&1 | tee -a $LOG_FILE
+    else
+        $TOX_PATH -c $FLINK_PYTHON_DIR/tox.ini --recreate 2>&1 | tee -a $LOG_FILE
+    fi
 
     TOX_RESULT=$((grep -c "congratulations :)" "$LOG_FILE") 2>&1)
     if [ $TOX_RESULT -eq '0' ]; then
@@ -679,6 +684,8 @@ SUPPORTED_INSTALLATION_COMPONENTS=()
 get_all_supported_install_components
 
 INSTALLATION_COMPONENTS=()
+
+BUILD_REASON=""
 # parse_opts
 USAGE="
 usage: $0 [options]
@@ -706,7 +713,7 @@ Examples:
   ./lint-python -f              =>  reinstall environment with all components and exec all checks.
   ./lint-python -l              =>  list all checks supported.
 "
-while getopts "hfs:i:e:l" arg; do
+while getopts "hfs:i:e:lc:" arg; do
     case "$arg" in
         h)
             printf "%s\\n" "$USAGE"
@@ -724,6 +731,9 @@ while getopts "hfs:i:e:l" arg; do
         i)
             INCLUDE_CHECKS=($(echo $OPTARG | tr ',' ' ' ))
             ;;
+        c)
+            BUILD_REASON=$(echo $OPTARG)
+            ;;
         l)
             printf "current supported checks includes:\n"
             for fun in ${SUPPORT_CHECKS[@]}; do
@@ -737,6 +747,8 @@ while getopts "hfs:i:e:l" arg; do
             ;;
     esac
 done
+
+echo ${BUILD_REASON}
 
 # decides whether to skip check stage
 skip_checks=0

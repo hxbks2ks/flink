@@ -32,6 +32,7 @@ source "${HERE}/maven-utils.sh"
 source "${HERE}/controller_utils.sh"
 
 STAGE=$1
+BUILD_REASON=$2
 
 # =============================================================================
 # Step 0: Check & print environment information & configure env
@@ -101,7 +102,7 @@ fi
 # =============================================================================
 
 if [ $STAGE == $STAGE_PYTHON ]; then
-	run_with_watchdog "./flink-python/dev/lint-python.sh" $CALLBACK_ON_TIMEOUT
+	run_with_watchdog "./flink-python/dev/lint-python.sh -c $BUILD_REASON" $CALLBACK_ON_TIMEOUT
 	EXIT_CODE=$?
 else
 	MVN_TEST_OPTIONS="-Dflink.tests.with-openssl"
