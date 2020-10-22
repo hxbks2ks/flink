@@ -110,6 +110,7 @@ echo "pytest==4.4.1" > "${REQUIREMENTS_PATH}"
 
 echo "Test submitting python job with 'pipeline.jars':\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -119,6 +120,7 @@ PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
 
 echo "Test submitting python job with 'pipeline.classpaths':\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -128,6 +130,7 @@ PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
 
 echo "Test blink stream python udf sql job:\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -136,6 +139,7 @@ PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
 
 echo "Test blink batch python udf sql job:\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -145,6 +149,7 @@ PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
 
 echo "Test flink stream python udf sql job:\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -154,6 +159,7 @@ PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
 
 echo "Test flink batch python udf sql job:\n"
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC} "${FLINK_DIR}/bin/flink" run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -194,6 +200,7 @@ SQL_STATEMENT="insert into sink select add_one(a) from (VALUES (1), (2), (3)) as
 
 JOB_ID=$($FLINK_DIR/bin/sql-client.sh embedded \
   --environment $SQL_CONF \
+  -p 2 \
   -pyfs "${FLINK_PYTHON_TEST_DIR}/python/add_one.py" \
   -pyreq "${REQUIREMENTS_PATH}" \
   -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -218,6 +225,7 @@ create_kafka_topic 1 1 test-python-data-stream-sink
 PYFLINK_CLIENT_EXECUTABLE=${PYTHON_EXEC}
 
 JOB_ID=$(${FLINK_DIR}/bin/flink run \
+	-p 2 \
     -pyfs "${FLINK_PYTHON_TEST_DIR}/python/datastream" \
     -pyreq "${REQUIREMENTS_PATH}" \
     -pyarch "${TEST_DATA_DIR}/venv.zip" \
@@ -298,6 +306,7 @@ if [[ ${PROFILE} != *"jdk11"* ]]; then
     docker exec master bash -c "export HADOOP_CLASSPATH=\`hadoop classpath\` && \
         export PYFLINK_CLIENT_EXECUTABLE=/tmp/.conda/bin/python && \
         /home/hadoop-user/$FLINK_DIRNAME/bin/flink run -m yarn-cluster -ytm 1500 -yjm 1000 \
+        -p 2 \
         -pyfs /tmp/add_one.py \
         -pyreq /tmp/requirements.txt \
         -pyarch /tmp/venv.zip \
@@ -307,6 +316,7 @@ if [[ ${PROFILE} != *"jdk11"* ]]; then
     docker exec master bash -c "export HADOOP_CLASSPATH=\`hadoop classpath\` && \
         export PYFLINK_CLIENT_EXECUTABLE=/tmp/.conda/bin/python && \
         /home/hadoop-user/$FLINK_DIRNAME/bin/flink run -m yarn-cluster -ytm 1500 -yjm 1000 \
+        -p 2 \
         -pyfs /tmp/add_one.py \
         -pyreq /tmp/requirements.txt \
         -pyarch /tmp/venv.zip \
