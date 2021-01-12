@@ -128,6 +128,14 @@ public class PythonConfigUtil {
         firstStream.setSlotSharingGroup(secondStream.getSlotSharingGroup());
     }
 
+    public static void setManagedMemory(Transformation<?> transformation) {
+        List<Transformation<?>> inputTransformations = transformation.getInputs();
+        transformation.declareManagedMemoryUseCaseAtSlotScope(ManagedMemoryUseCase.PYTHON);
+        for (Transformation inputTransformation : inputTransformations) {
+            setManagedMemory(inputTransformation);
+        }
+    }
+
     /**
      * Generate a {@link StreamGraph} for transformations maintained by current {@link
      * StreamExecutionEnvironment}, and reset the merged env configurations with dependencies to
