@@ -21,6 +21,13 @@ function run_mvn {
 		MVN_CMD="${M2_HOME}/bin/mvn"
 	fi
 
+    if [[ ! -d "flink-shaded" ]]; then
+        echo "build flink-shaded"
+        git clone https://github.com/HuangXingBo/flink-shaded.git --branch FLINK-21020 --single-branch
+        cd flink-shaded
+        ${MVN_CMD} clean install -DskipTests
+        cd ..
+    fi
 	ARGS=$@
 	INVOCATION="$MVN_CMD $MVN_GLOBAL_OPTIONS $ARGS"
 	if [[ "$MVN_RUN_VERBOSE" != "false" ]]; then
