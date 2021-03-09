@@ -135,13 +135,7 @@ with io.open(os.path.join(this_directory, 'README.md'), 'r', encoding='utf-8') a
 
 TEMP_PATH = "deps"
 
-LIB_TEMP_PATH = os.path.join(TEMP_PATH, "lib")
-OPT_TEMP_PATH = os.path.join(TEMP_PATH, "opt")
-CONF_TEMP_PATH = os.path.join(TEMP_PATH, "conf")
-LOG_TEMP_PATH = os.path.join(TEMP_PATH, "log")
-EXAMPLES_TEMP_PATH = os.path.join(TEMP_PATH, "examples")
 LICENSES_TEMP_PATH = os.path.join(TEMP_PATH, "licenses")
-PLUGINS_TEMP_PATH = os.path.join(TEMP_PATH, "plugins")
 SCRIPTS_TEMP_PATH = os.path.join(TEMP_PATH, "bin")
 
 LICENSE_FILE_TEMP_PATH = os.path.join(this_directory, "LICENSE")
@@ -180,16 +174,7 @@ run sdist.
       python setup.py sdist
       pip install dist/*.tar.gz"""
 
-        LIB_PATH = os.path.join(FLINK_HOME, "lib")
-        OPT_PATH = os.path.join(FLINK_HOME, "opt")
-        OPT_PYTHON_JAR_NAME = os.path.basename(
-            find_file_path(os.path.join(OPT_PATH, "flink-python_*.jar")))
-        OPT_SQL_CLIENT_JAR_NAME = os.path.basename(
-            find_file_path(os.path.join(OPT_PATH, "flink-sql-client_*.jar")))
-        CONF_PATH = os.path.join(FLINK_HOME, "conf")
-        EXAMPLES_PATH = os.path.join(FLINK_HOME, "examples")
         LICENSES_PATH = os.path.join(FLINK_HOME, "licenses")
-        PLUGINS_PATH = os.path.join(FLINK_HOME, "plugins")
         SCRIPTS_PATH = os.path.join(FLINK_HOME, "bin")
 
         LICENSE_FILE_PATH = os.path.join(FLINK_HOME, "LICENSE")
@@ -197,45 +182,27 @@ run sdist.
 
         exist_licenses = os.path.exists(LICENSES_PATH)
 
-        if not os.path.isdir(LIB_PATH):
+        if not os.path.isdir(SCRIPTS_PATH):
             print(incorrect_invocation_message, file=sys.stderr)
             sys.exit(-1)
 
         try:
-            os.symlink(LIB_PATH, LIB_TEMP_PATH)
+            os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)
             support_symlinks = True
         except BaseException:  # pylint: disable=broad-except
             support_symlinks = False
 
-        os.mkdir(OPT_TEMP_PATH)
         if support_symlinks:
-            os.symlink(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),
-                       os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))
-            os.symlink(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),
-                       os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))
-            os.symlink(CONF_PATH, CONF_TEMP_PATH)
-            os.symlink(EXAMPLES_PATH, EXAMPLES_TEMP_PATH)
-            os.symlink(PLUGINS_PATH, PLUGINS_TEMP_PATH)
-            os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)
             os.symlink(README_FILE_PATH, README_FILE_TEMP_PATH)
         else:
-            copytree(LIB_PATH, LIB_TEMP_PATH)
-            copy(os.path.join(OPT_PATH, OPT_PYTHON_JAR_NAME),
-                 os.path.join(OPT_TEMP_PATH, OPT_PYTHON_JAR_NAME))
-            copy(os.path.join(OPT_PATH, OPT_SQL_CLIENT_JAR_NAME),
-                 os.path.join(OPT_TEMP_PATH, OPT_SQL_CLIENT_JAR_NAME))
-            copytree(CONF_PATH, CONF_TEMP_PATH)
-            copytree(EXAMPLES_PATH, EXAMPLES_TEMP_PATH)
-            copytree(PLUGINS_PATH, PLUGINS_TEMP_PATH)
-            copy(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)
             copy(README_FILE_PATH, README_FILE_TEMP_PATH)
-        os.mkdir(LOG_TEMP_PATH)
-        with open(os.path.join(LOG_TEMP_PATH, "empty.txt"), 'w') as f:
-            f.write("This file is used to force setuptools to include the log directory. "
-                    "You can delete it at any time after installation.")
 
-        # copy the udf runner scripts
-        copytree(SCRIPTS_PATH, SCRIPTS_TEMP_PATH)
+        os.mkdir(SCRIPTS_TEMP_PATH)
+        copy(os.path.join(SCRIPTS_PATH, "find-flink-home.sh"),
+             os.path.join(SCRIPTS_TEMP_PATH, "find-flink-home.sh"))
+        # copy the udf runner scripts and pyflink-shell.sh
+        copy(os.path.join(this_directory, "bin", "pyflink-shell.sh"),
+             os.path.join(SCRIPTS_TEMP_PATH, "pyflink-shell.sh"))
         copy(os.path.join(this_directory, "bin", PYFLINK_UDF_RUNNER_SH),
              os.path.join(SCRIPTS_TEMP_PATH, PYFLINK_UDF_RUNNER_SH))
         copy(os.path.join(this_directory, "bin", PYFLINK_UDF_RUNNER_BAT),
@@ -251,12 +218,6 @@ run sdist.
             GENERATED_NOTICE_FILE_PATH = os.path.join(TEMP_PATH, "NOTICE")
             os.rename(GENERATED_NOTICE_FILE_PATH, NOTICE_FILE_TEMP_PATH)
     else:
-        if not os.path.isdir(LIB_TEMP_PATH) or not os.path.isdir(OPT_TEMP_PATH) \
-                or not os.path.isdir(SCRIPTS_TEMP_PATH):
-            print("The flink core files are not found. Please make sure your installation package "
-                  "is complete, or do this in the flink-python directory of the flink source "
-                  "directory.")
-            sys.exit(-1)
         exist_licenses = os.path.exists(LICENSES_TEMP_PATH)
 
     script_names = ["pyflink-shell.sh", "find-flink-home.sh"]
@@ -277,31 +238,13 @@ run sdist.
                 'pyflink.ml.api.param',
                 'pyflink.ml.lib',
                 'pyflink.ml.lib.param',
-                'pyflink.lib',
-                'pyflink.opt',
-                'pyflink.conf',
-                'pyflink.log',
-                'pyflink.examples',
-                'pyflink.plugins',
                 'pyflink.bin']
 
     PACKAGE_DIR = {
-        'pyflink.lib': TEMP_PATH + '/lib',
-        'pyflink.opt': TEMP_PATH + '/opt',
-        'pyflink.conf': TEMP_PATH + '/conf',
-        'pyflink.log': TEMP_PATH + '/log',
-        'pyflink.examples': TEMP_PATH + '/examples',
-        'pyflink.plugins': TEMP_PATH + '/plugins',
         'pyflink.bin': TEMP_PATH + '/bin'}
 
     PACKAGE_DATA = {
         'pyflink': ['README.txt'],
-        'pyflink.lib': ['*.jar'],
-        'pyflink.opt': ['*.*', '*/*'],
-        'pyflink.conf': ['*'],
-        'pyflink.log': ['*'],
-        'pyflink.examples': ['*.py', '*/*.py'],
-        'pyflink.plugins': ['*', '*/*'],
         'pyflink.bin': ['*']}
 
     if exist_licenses and platform.system() != "Windows":

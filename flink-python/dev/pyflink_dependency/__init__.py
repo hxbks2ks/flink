@@ -14,14 +14,4 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 # limitations under the License.
-################################################################################
-
-global-exclude *.py[cod] __pycache__ .DS_Store
-graft deps/bin
-graft deps/licenses
-include README.md
-include LICENSE
-include NOTICE
-include pyflink/README.txt
-recursive-include pyflink/fn_execution *.pxd
-recursive-include pyflink/fn_execution *.pyx
+#################################################################################

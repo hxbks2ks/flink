@@ -47,7 +47,7 @@ def _find_flink_home():
                 return build_target[0]
 
             from importlib.util import find_spec
-            module_home = os.path.dirname(find_spec("pyflink").origin)
+            module_home = os.path.dirname(find_spec("pyflink_dependency").origin)
 
             if _is_flink_home(module_home):
                 os.environ['FLINK_HOME'] = module_home
