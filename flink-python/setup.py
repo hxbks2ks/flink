@@ -24,7 +24,7 @@ import platform
 import subprocess
 import sys
 from distutils.command.build_ext import build_ext
-from shutil import copytree, copy, rmtree
+from shutil import copy, rmtree
 
 from setuptools import setup, Extension
 
@@ -268,7 +268,8 @@ run sdist.
         install_requires=['py4j==0.10.8.1', 'python-dateutil==2.8.0', 'apache-beam==2.27.0',
                           'cloudpickle==1.2.2', 'avro-python3>=1.8.1,!=1.9.2,<1.10.0',
                           'jsonpickle==1.2', 'pandas>=1.0,<1.2.0', 'pyarrow>=0.15.1,<3.0.0',
-                          'pytz>=2018.3', 'numpy>=1.14.3,<1.20', 'fastavro>=0.21.4,<0.24'],
+                          'pytz>=2018.3', 'numpy>=1.14.3,<1.20', 'fastavro>=0.21.4,<0.24',
+                          'pyflink_dependency==%s' % VERSION],
         cmdclass={'build_ext': build_ext},
         tests_require=['pytest==4.4.1'],
         description='Apache Flink Python API',
