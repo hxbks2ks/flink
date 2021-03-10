@@ -33,10 +33,10 @@ flink-python/dev/download
 flink-python/dev/.conda/
 flink-python/dev/log/
 flink-python/dev/.stage.txt
-flink-python/dev/pyflink_dependency.egg-info/
+flink-python/dev/apache_flink_libraries.egg-info/
 flink-python/.eggs/
 flink-python/apache-flink-*.dev0/
-flink-python/dev/pyflink_dependency-*.dev0/
+flink-python/dev/apache_flink_libraries-*.dev0/
 flink-python/**/*.c
 flink-python/**/*.so
 atlassian-ide-plugin.xml

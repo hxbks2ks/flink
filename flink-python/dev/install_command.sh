@@ -16,7 +16,7 @@
 #  See the License for the specific language governing permissions and
 # limitations under the License.
 ################################################################################
-if [[ "$@" =~ 'pyflink-dependency' ]]; then
+if [[ "$@" =~ 'apache-flink-libraries' ]]; then
     pushd dev
     python setup.py sdist
     pushd dist

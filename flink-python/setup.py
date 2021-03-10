@@ -269,7 +269,7 @@ run sdist.
                           'cloudpickle==1.2.2', 'avro-python3>=1.8.1,!=1.9.2,<1.10.0',
                           'jsonpickle==1.2', 'pandas>=1.0,<1.2.0', 'pyarrow>=0.15.1,<3.0.0',
                           'pytz>=2018.3', 'numpy>=1.14.3,<1.20', 'fastavro>=0.21.4,<0.24',
-                          'pyflink_dependency==%s' % VERSION],
+                          'apache-flink-libraries==%s' % VERSION],
         cmdclass={'build_ext': build_ext},
         tests_require=['pytest==4.4.1'],
         description='Apache Flink Python API',

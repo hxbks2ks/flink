@@ -49,7 +49,7 @@ def find_file_path(pattern):
 
 
 this_directory = os.path.abspath(os.path.dirname(__file__))
-version_file = os.path.join(this_directory, 'pyflink_dependency/version.py')
+version_file = os.path.join(this_directory, 'apache_flink_libraries/version.py')
 
 try:
     exec(open(version_file).read())
@@ -80,8 +80,8 @@ SCRIPTS_TEMP_PATH = os.path.join(TEMP_PATH, "bin")
 
 LICENSE_FILE_TEMP_PATH = os.path.join(this_directory, "LICENSE")
 NOTICE_FILE_TEMP_PATH = os.path.join(this_directory, "NOTICE")
-README_FILE_TEMP_PATH = os.path.join("pyflink_dependency", "README.txt")
-VERSION_FILE_TEMP_PATH = os.path.join("pyflink_dependency", "version.py")
+README_FILE_TEMP_PATH = os.path.join("apache_flink_libraries", "README.txt")
+VERSION_FILE_TEMP_PATH = os.path.join("apache_flink_libraries", "version.py")
 
 in_flink_source = os.path.isfile("../../flink-java/src/main/java/org/apache/flink/api/java/"
                                  "ExecutionEnvironment.java")
@@ -192,41 +192,41 @@ run sdist.
             sys.exit(-1)
         exist_licenses = os.path.exists(LICENSES_TEMP_PATH)
 
-    PACKAGES = ['pyflink_dependency',
-                'pyflink_dependency.lib',
-                'pyflink_dependency.opt',
-                'pyflink_dependency.conf',
-                'pyflink_dependency.log',
-                'pyflink_dependency.examples',
-                'pyflink_dependency.plugins',
-                'pyflink_dependency.bin']
+    PACKAGES = ['apache_flink_libraries',
+                'apache_flink_libraries.lib',
+                'apache_flink_libraries.opt',
+                'apache_flink_libraries.conf',
+                'apache_flink_libraries.log',
+                'apache_flink_libraries.examples',
+                'apache_flink_libraries.plugins',
+                'apache_flink_libraries.bin']
 
     PACKAGE_DIR = {
-        'pyflink_dependency.lib': TEMP_PATH + '/lib',
-        'pyflink_dependency.opt': TEMP_PATH + '/opt',
-        'pyflink_dependency.conf': TEMP_PATH + '/conf',
-        'pyflink_dependency.log': TEMP_PATH + '/log',
-        'pyflink_dependency.examples': TEMP_PATH + '/examples',
-        'pyflink_dependency.plugins': TEMP_PATH + '/plugins',
-        'pyflink_dependency.bin': TEMP_PATH + '/bin'}
+        'apache_flink_libraries.lib': TEMP_PATH + '/lib',
+        'apache_flink_libraries.opt': TEMP_PATH + '/opt',
+        'apache_flink_libraries.conf': TEMP_PATH + '/conf',
+        'apache_flink_libraries.log': TEMP_PATH + '/log',
+        'apache_flink_libraries.examples': TEMP_PATH + '/examples',
+        'apache_flink_libraries.plugins': TEMP_PATH + '/plugins',
+        'apache_flink_libraries.bin': TEMP_PATH + '/bin'}
 
     PACKAGE_DATA = {
-        'pyflink_dependency': ['README.txt', 'version.py'],
-        'pyflink_dependency.lib': ['*.jar'],
-        'pyflink_dependency.opt': ['*.*', '*/*'],
-        'pyflink_dependency.conf': ['*'],
-        'pyflink_dependency.log': ['*'],
-        'pyflink_dependency.examples': ['*.py', '*/*.py'],
-        'pyflink_dependency.plugins': ['*', '*/*'],
-        'pyflink_dependency.bin': ['*']}
+        'apache_flink_libraries': ['README.txt', 'version.py'],
+        'apache_flink_libraries.lib': ['*.jar'],
+        'apache_flink_libraries.opt': ['*.*', '*/*'],
+        'apache_flink_libraries.conf': ['*'],
+        'apache_flink_libraries.log': ['*'],
+        'apache_flink_libraries.examples': ['*.py', '*/*.py'],
+        'apache_flink_libraries.plugins': ['*', '*/*'],
+        'apache_flink_libraries.bin': ['*']}
 
     if exist_licenses and platform.system() != "Windows":
-        PACKAGES.append('pyflink_dependency.licenses')
-        PACKAGE_DIR['pyflink_dependency.licenses'] = TEMP_PATH + '/licenses'
-        PACKAGE_DATA['pyflink_dependency.licenses'] = ['*']
+        PACKAGES.append('apache_flink_libraries.licenses')
+        PACKAGE_DIR['apache_flink_libraries.licenses'] = TEMP_PATH + '/licenses'
+        PACKAGE_DATA['apache_flink_libraries.licenses'] = ['*']
 
     setup(
-        name='pyflink_dependency',
+        name='apache_flink_libraries',
         version=VERSION,
         packages=PACKAGES,
         include_package_data=True,
