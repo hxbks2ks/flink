@@ -162,47 +162,23 @@ try:
         flink_version = VERSION.replace(".dev0", "-SNAPSHOT")
         FLINK_HOME = os.path.abspath(
             "../flink-dist/target/flink-%s-bin/flink-%s" % (flink_version, flink_version))
-
-        incorrect_invocation_message = """
-If you are installing pyflink from flink source, you must first build Flink and
-run sdist.
-
-    To build Flink with maven you can run:
-      mvn -DskipTests clean package
-    Building the source dist is done in the flink-python directory:
-      cd flink-python
-      python setup.py sdist
-      pip install dist/*.tar.gz"""
+        FLINK_ROOT = os.path.abspath("..")
+        FLINK_DIST = os.path.join(FLINK_ROOT, "flink-dist/src/main/flink-bin")
 
         LICENSES_PATH = os.path.join(FLINK_HOME, "licenses")
-        SCRIPTS_PATH = os.path.join(FLINK_HOME, "bin")
+        SCRIPTS_PATH = os.path.join(FLINK_DIST, "bin")
 
-        LICENSE_FILE_PATH = os.path.join(FLINK_HOME, "LICENSE")
-        README_FILE_PATH = os.path.join(FLINK_HOME, "README.txt")
-
-        exist_licenses = os.path.exists(LICENSES_PATH)
-
-        if not os.path.isdir(SCRIPTS_PATH):
-            print(incorrect_invocation_message, file=sys.stderr)
-            sys.exit(-1)
+        LICENSE_FILE_PATH = os.path.join(FLINK_ROOT, "LICENSE")
+        README_FILE_PATH = os.path.join(FLINK_DIST, "README.txt")
 
         try:
             os.symlink(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)
-            support_symlinks = True
-        except BaseException:  # pylint: disable=broad-except
-            support_symlinks = False
-
-        if support_symlinks:
             os.symlink(README_FILE_PATH, README_FILE_TEMP_PATH)
-        else:
+        except BaseException:  # pylint: disable=broad-except
+            copy(LICENSE_FILE_PATH, LICENSE_FILE_TEMP_PATH)
             copy(README_FILE_PATH, README_FILE_TEMP_PATH)
 
         os.mkdir(SCRIPTS_TEMP_PATH)
-        copy(os.path.join(SCRIPTS_PATH, "find-flink-home.sh"),
-             os.path.join(SCRIPTS_TEMP_PATH, "find-flink-home.sh"))
-        # copy the udf runner scripts and pyflink-shell.sh
-        copy(os.path.join(this_directory, "bin", "pyflink-shell.sh"),
-             os.path.join(SCRIPTS_TEMP_PATH, "pyflink-shell.sh"))
         copy(os.path.join(this_directory, "bin", PYFLINK_UDF_RUNNER_SH),
              os.path.join(SCRIPTS_TEMP_PATH, PYFLINK_UDF_RUNNER_SH))
         copy(os.path.join(this_directory, "bin", PYFLINK_UDF_RUNNER_BAT),
@@ -219,10 +195,7 @@ run sdist.
             os.rename(GENERATED_NOTICE_FILE_PATH, NOTICE_FILE_TEMP_PATH)
     else:
         exist_licenses = os.path.exists(LICENSES_TEMP_PATH)
-
-    script_names = ["pyflink-shell.sh", "find-flink-home.sh"]
-    scripts = [os.path.join(SCRIPTS_TEMP_PATH, script) for script in script_names]
-    scripts.append("pyflink/find_flink_home.py")
+    scripts = ["pyflink/find_flink_home.py"]
 
     PACKAGES = ['pyflink',
                 'pyflink.table',

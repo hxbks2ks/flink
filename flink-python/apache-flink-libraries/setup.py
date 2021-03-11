@@ -191,6 +191,8 @@ run sdist.
                   "directory.")
             sys.exit(-1)
         exist_licenses = os.path.exists(LICENSES_TEMP_PATH)
+    script_names = ["pyflink-shell.sh", "find-flink-home.sh"]
+    scripts = [os.path.join(SCRIPTS_TEMP_PATH, script) for script in script_names]
 
     PACKAGES = ['apache_flink_libraries',
                 'apache_flink_libraries.lib',
@@ -232,6 +234,7 @@ run sdist.
         include_package_data=True,
         package_dir=PACKAGE_DIR,
         package_data=PACKAGE_DATA,
+        scripts=scripts,
         url='https://flink.apache.org',
         license='https://www.apache.org/licenses/LICENSE-2.0',
         author='Apache Software Foundation',
