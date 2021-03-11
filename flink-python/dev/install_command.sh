@@ -17,7 +17,7 @@
 # limitations under the License.
 ################################################################################
 if [[ "$@" =~ 'apache-flink-libraries' ]]; then
-    pushd dev
+    pushd apache-flink-libraries
     python setup.py sdist
     pushd dist
     python -m pip install *

@@ -23,7 +23,7 @@ flink-runtime-web/web-dashboard/node/
 flink-runtime-web/web-dashboard/node_modules/
 flink-runtime-web/web-dashboard/web/
 flink-python/dist/
-flink-python/dev/dist/
+flink-python/apache-flink-libraries/dist/
 flink-python/build/
 flink-python/pyflink.egg-info/
 flink-python/apache_flink.egg-info/
@@ -33,10 +33,10 @@ flink-python/dev/download
 flink-python/dev/.conda/
 flink-python/dev/log/
 flink-python/dev/.stage.txt
-flink-python/dev/apache_flink_libraries.egg-info/
+flink-python/apache-flink-libraries/apache_flink_libraries.egg-info/
 flink-python/.eggs/
 flink-python/apache-flink-*.dev0/
-flink-python/dev/apache_flink_libraries-*.dev0/
+flink-python/apache-flink-libraries/apache_flink_libraries-*.dev0/
 flink-python/**/*.c
 flink-python/**/*.so
 atlassian-ide-plugin.xml
