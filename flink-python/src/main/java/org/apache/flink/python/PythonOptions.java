@@ -65,6 +65,15 @@ public class PythonOptions {
                             "When it is false, metric for Python will be disabled. You can "
                                     + "disable the metric to achieve better performance at some circumstance.");
 
+    /** The configuration to enable or disable profile for Python execution. */
+    public static final ConfigOption<Boolean> PYTHON_PROFILE_ENABLED =
+            ConfigOptions.key("python.profile.enabled")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription(
+                            "When it is true, profile for Python will be enabled. You can "
+                                    + "enable the profile to analyze performance bottlenecks.");
+
     public static final ConfigOption<String> PYTHON_FILES =
             ConfigOptions.key("python.files")
                     .stringType()

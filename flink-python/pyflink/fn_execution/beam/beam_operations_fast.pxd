@@ -30,7 +30,10 @@ cdef class FunctionOperation(Operation):
     cdef object process_element
     cdef object operation
     cdef object operation_cls
+    cdef object _profiler
+    cdef bint _profile_enabled
     cdef object generate_operation(self)
+    cpdef _process_data(self, data)
 
 cdef class StatelessFunctionOperation(FunctionOperation):
     pass

@@ -26,6 +26,7 @@ from pyflink.fn_execution.coder_impl_fast cimport LengthPrefixBaseCoderImpl
 from pyflink.fn_execution.beam.beam_stream cimport BeamInputStream, BeamOutputStream
 from pyflink.fn_execution.beam.beam_coder_impl_fast cimport InputStreamWrapper, BeamCoderImpl
 from pyflink.fn_execution.table.operations import BundleOperation
+from pyflink.fn_execution.operation_utils import Profiler
 
 cdef class FunctionOperation(Operation):
     """
@@ -48,6 +49,9 @@ cdef class FunctionOperation(Operation):
         self.operation = self.generate_operation()
         self.process_element = self.operation.process_element
         self.operation.open()
+        self._profile_enabled = self.operation.is_profile_enabled()
+        if self._profile_enabled:
+            self._profiler = Profiler()
 
     cpdef start(self):
         with self.scoped_start_state:
@@ -63,33 +67,12 @@ cdef class FunctionOperation(Operation):
             self.operation.close()
 
     cpdef process(self, WindowedValue o):
-        cdef InputStreamWrapper input_stream_wrapper
-        cdef BeamInputStream input_stream
-        cdef LengthPrefixBaseCoderImpl input_coder
-        cdef BeamOutputStream output_stream
         with self.scoped_process_state:
-            if self._is_python_coder:
-                for value in o.value:
-                    self._value_coder_impl.encode_to_stream(
-                        self.process_element(value), self.consumer.output_stream, True)
-                    self.consumer.output_stream.maybe_flush()
+            if self._profile_enabled:
+                with self._profiler:
+                    self._process_data(o.value)
             else:
-                input_stream_wrapper = o.value
-                input_stream = input_stream_wrapper._input_stream
-                input_coder = input_stream_wrapper._value_coder
-                output_stream = BeamOutputStream(self.consumer.output_stream)
-                if isinstance(self.operation, BundleOperation):
-                    while input_stream.available():
-                        input_data = input_coder.decode_from_stream(input_stream)
-                        self.process_element(input_data)
-                    result = self.operation.finish_bundle()
-                    self._output_coder.encode_to_stream(result, output_stream)
-                else:
-                    while input_stream.available():
-                        input_data = input_coder.decode_from_stream(input_stream)
-                        result = self.process_element(input_data)
-                        self._output_coder.encode_to_stream(result, output_stream)
-                output_stream.flush()
+                self._process_data(o.value)
 
     def progress_metrics(self):
         metrics = super(FunctionOperation, self).progress_metrics()
@@ -106,6 +89,34 @@ cdef class FunctionOperation(Operation):
         :param tag_to_pcollection_id: useless for user metric
         """
         return self.user_monitoring_infos(transform_id)
+
+    cpdef _process_data(self, data):
+        cdef InputStreamWrapper input_stream_wrapper
+        cdef BeamInputStream input_stream
+        cdef LengthPrefixBaseCoderImpl input_coder
+        cdef BeamOutputStream output_stream
+        if self._is_python_coder:
+            for value in data:
+                self._value_coder_impl.encode_to_stream(
+                    self.process_element(value), self.consumer.output_stream, True)
+                self.consumer.output_stream.maybe_flush()
+        else:
+            input_stream_wrapper = data
+            input_stream = input_stream_wrapper._input_stream
+            input_coder = input_stream_wrapper._value_coder
+            output_stream = BeamOutputStream(self.consumer.output_stream)
+            if isinstance(self.operation, BundleOperation):
+                while input_stream.available():
+                    input_data = input_coder.decode_from_stream(input_stream)
+                    self.process_element(input_data)
+                result = self.operation.finish_bundle()
+                self._output_coder.encode_to_stream(result, output_stream)
+            else:
+                while input_stream.available():
+                    input_data = input_coder.decode_from_stream(input_stream)
+                    result = self.process_element(input_data)
+                    self._output_coder.encode_to_stream(result, output_stream)
+            output_stream.flush()
 
     cdef object generate_operation(self):
         pass
