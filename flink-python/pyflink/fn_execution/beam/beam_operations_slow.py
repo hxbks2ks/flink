@@ -21,7 +21,7 @@ from apache_beam.runners.worker.operations import Operation
 from apache_beam.utils.windowed_value import WindowedValue
 
 from pyflink.fn_execution.table.operations import BundleOperation
-from pyflink.fn_execution.operation_utils import Profiler
+from pyflink.fn_execution.utils.profiler import Profiler
 
 
 class FunctionOperation(Operation):
@@ -38,9 +38,10 @@ class FunctionOperation(Operation):
         self.operation = self.generate_operation()
         self.process_element = self.operation.process_element
         self.operation.open()
-        self._profile_enabled = self.operation.is_profile_enabled()
-        if self._profile_enabled:
+        if spec.serialized_fn.profile_enabled:
             self._profiler = Profiler()
+        else:
+            self._profiler = None
 
     def setup(self):
         super(FunctionOperation, self).setup()
@@ -48,11 +49,15 @@ class FunctionOperation(Operation):
     def start(self):
         with self.scoped_start_state:
             super(FunctionOperation, self).start()
+            if self._profiler:
+                self._profiler.start()
 
     def finish(self):
         with self.scoped_finish_state:
             super(FunctionOperation, self).finish()
             self.operation.finish()
+            if self._profiler:
+                self._profiler.close()
 
     def needs_finalization(self):
         return False
@@ -75,11 +80,18 @@ class FunctionOperation(Operation):
 
     def process(self, o: WindowedValue):
         with self.scoped_process_state:
-            if self._profile_enabled:
-                with self._profiler:
-                    self._process_data(o.value)
+            output_stream = self.consumer.output_stream
+            if isinstance(self.operation, BundleOperation):
+                for value in o.value:
+                    self.process_element(value)
+                self._value_coder_impl.encode_to_stream(
+                    self.operation.finish_bundle(), output_stream, True)
+                output_stream.maybe_flush()
             else:
-                self._process_data(o.value)
+                for value in o.value:
+                    self._value_coder_impl.encode_to_stream(
+                        self.process_element(value), output_stream, True)
+                    output_stream.maybe_flush()
 
     def monitoring_infos(self, transform_id, tag_to_pcollection_id):
         """
@@ -87,20 +99,6 @@ class FunctionOperation(Operation):
         :param tag_to_pcollection_id: useless for user metric
         """
         return super().user_monitoring_infos(transform_id)
-
-    def _process_data(self, data):
-        output_stream = self.consumer.output_stream
-        if isinstance(self.operation, BundleOperation):
-            for value in data:
-                self.process_element(value)
-            self._value_coder_impl.encode_to_stream(
-                self.operation.finish_bundle(), output_stream, True)
-            output_stream.maybe_flush()
-        else:
-            for value in data:
-                self._value_coder_impl.encode_to_stream(
-                    self.process_element(value), output_stream, True)
-                output_stream.maybe_flush()
 
     @abstractmethod
     def generate_operation(self):

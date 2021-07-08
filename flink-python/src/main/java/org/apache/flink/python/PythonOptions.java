@@ -71,8 +71,10 @@ public class PythonOptions {
                     .booleanType()
                     .defaultValue(false)
                     .withDescription(
-                            "When it is true, profile for Python will be enabled. You can "
-                                    + "enable the profile to analyze performance bottlenecks.");
+                            "Specifies whether to enable Python worker profiling. The profile result "
+                                    + "will be displayed in the log file of the TaskManager periodically. "
+                                    + "The interval between each profiling is determined by the config options "
+                                    + "python.fn-execution.bundle.size and python.fn-execution.bundle.time.");
 
     public static final ConfigOption<String> PYTHON_FILES =
             ConfigOptions.key("python.files")
